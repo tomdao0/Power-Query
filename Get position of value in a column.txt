@@ -1,0 +1,15 @@
+let
+    Source = Excel.Workbook(File.Contents("C:\Users\tomda\OneDrive - Silver Sea Enterprise LLC\Silversea General\TPS Hayer\PTO\Staff Posted Summary RPA.xlsx"), null, true),
+    
+    DataSheetName = Table.Column(Source, "Name"){1}, //Column to list
+    Navigation = Source{[Item=DataSheetName,Kind="Sheet"]}[Data],
+    #"Changed Type" = Table.TransformColumnTypes(Navigation,{{"Column1", type any}, {"Column2", type any}, {"Column3", type any}, {"Column4", type text}, {"Column5", type any}, {"Column6", type any}, {"Column7", type any}, {"Column8", type any}, {"Column9", type text}, {"Column10", type any}, {"Column11", type any}, {"Column12", type any}, {"Column13", type any}, {"Column14", type any}, {"Column15", type any}, {"Column16", type any}, {"Column17", type any}, {"Column18", type any}, {"Column19", type any}}),
+    DCol1 = Table.Column(Navigation, "Column1"), 
+    NRemoveBot = List.Count(DCol1) - List.PositionOf(DCol1, "Grand Totals:"),
+    NRemoveTop = List.PositionOf(DCol1, "") + 1,
+    RemoveTop = Table.RemoveFirstN(#"Changed Type", NRemoveTop),
+    RemoveBot = Table.RemoveLastN(RemoveTop, NRemoveBot),
+    #"Added Custom" = Table.AddColumn(RemoveBot, "Custom", each if [Column1] = "Posted
+ Hours" then 1 else null)  
+in
+    #"Added Custom"

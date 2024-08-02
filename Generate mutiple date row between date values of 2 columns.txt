@@ -1,0 +1,31 @@
+let
+    Source = Query1(),
+    InputITInventory = Source{[Name="InputITInventory"]}[Content],
+    #"Changed Type" = Table.TransformColumnTypes(InputITInventory,{{"AssetID", type text}, {"Description", type text}, {"Vendor", type text}, {"Unit cost", Int64.Type}, {"Frequency", type text}, {"Start Date", type any}, {"End Date", type datetime}}),
+    #"Filtered Rows" = Table.SelectRows(#"Changed Type", each ([Unit cost] <> null )),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Filtered Rows",{{"Start Date", type date}}),
+    #"Filtered Rows1" = Table.SelectRows(#"Changed Type1", each ([Frequency] = "Monthly") and ([Start Date] <> null)),
+    #"Changed Type2" = Table.TransformColumnTypes(#"Filtered Rows1",{{"Start Date", type date}, {"End Date", type date}}),
+    AddCustomColumn = Table.AddColumn(#"Changed Type2", "Budget Date", each let //This generate multiple row
+            StartDate = [Start Date],
+            EndDate = if [End Date] <> null then [End Date] else Date.EndOfYear(Date.From(DateTimeZone.LocalNow()))
+        in 
+            List.Generate(
+                () => StartDate,
+                each _ <= EndDate,
+                each Date.AddMonths(_, 1)
+            )),
+    ExpandDates = Table.ExpandListColumn(AddCustomColumn, "Budget Date"),
+        #"Changed Type3" = Table.TransformColumnTypes(ExpandDates,{{"Budget Date", type date}}),
+    #"Removed Other Columns" = Table.SelectColumns(#"Changed Type3",{"AssetID", "Unit cost", "Budget Date"}),
+    #"Added Custom" = Table.AddColumn(#"Removed Other Columns", "month_name", each Date.ToText([Budget Date], "MMMM"), type text),
+    #"Added Custom1" = Table.AddColumn(#"Added Custom", "month_number", each Date.Month([Budget Date]) , Int64.Type),
+    #"Added Custom2" = Table.AddColumn(#"Added Custom1", "year", each Date.Year([Budget Date]), Int64.Type),
+    #"Added Custom3" = Table.AddColumn(#"Added Custom2", "first_of_month", each Date.StartOfMonth([Budget Date]), type date),
+    #"Added Custom4" = Table.AddColumn(#"Added Custom3", "end_of_month", each Date.EndOfMonth([Budget Date]), type date),
+    #"Added Custom5" = Table.AddColumn(#"Added Custom4", "week_start", each Date.StartOfWeek([Budget Date]), type date),
+    #"Added Custom6" = Table.AddColumn(#"Added Custom5", "week_end", each Date.EndOfWeek([Budget Date]), type date),
+    #"Added Custom7" = Table.AddColumn(#"Added Custom6", "week_number", each Date.WeekOfYear([Budget Date]), Int64.Type),
+    #"Added Custom8" = Table.AddColumn(#"Added Custom7", "quarter", each Date.QuarterOfYear([Budget Date]), Int8.Type)
+in
+    #"Added Custom8"
